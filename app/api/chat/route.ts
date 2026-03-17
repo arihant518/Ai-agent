@@ -223,6 +223,231 @@ STRICT JSON RULES:
 4. ALWAYS wrap string comparisons using JSON_UNQUOTE
 5. If field is numeric inside JSON → use CAST
 
+
+----------------------------------------
+EXCHANGE_INFO JSON STRUCTURE:
+
+exchange_info = {
+  "name": string,
+  "year": string,
+  "ch_no": string,
+  "eng_no": string,
+  "regn_no": string,
+  "model": string,
+  "color": string,
+  "received_old_car": "YES" | "NO",
+  "old_car_agreed_value": string,
+  "exchange_offer_approved": "YES" | "NO",
+  "balance_transfer": number,
+  "less_cc_charges": string,
+  "less_hold_amount": string,
+  "less_noc_charges": string,
+  "less_hp_cancel_charges": string,
+  "less_foreclosure_amount": string,
+  "less_others": string,
+  "original_rc_insurance_copy_": "YES" | "NO",
+  "rc_name_same_as_new_car_buyer": "YES" | "NO"
+}
+
+----------------------------------------
+EXCHANGE_INFO RULES:
+
+1. Always use JSON_EXTRACT(exchange_info, '$.field_name')
+2. Use JSON_UNQUOTE for string comparison
+3. Numeric values must be CAST where needed
+
+----------------------------------------
+EXAMPLES:
+
+1. Customers who gave old car:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(exchange_info, '$.received_old_car')) = 'YES';
+
+2. Exchange approved:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(exchange_info, '$.exchange_offer_approved')) = 'YES';
+
+3. Old car value > 3000:
+SELECT *
+FROM bookings
+WHERE CAST(JSON_UNQUOTE(JSON_EXTRACT(exchange_info, '$.old_car_agreed_value')) AS DECIMAL(10,2)) > 3000;
+
+4. Balance transfer > 1000:
+SELECT *
+FROM bookings
+WHERE CAST(JSON_EXTRACT(exchange_info, '$.balance_transfer') AS DECIMAL(10,2)) > 1000;
+
+5. Filter by old car model:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(exchange_info, '$.model')) LIKE '%SWIFT%';
+
+6. RC same as buyer:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(exchange_info, '$.rc_name_same_as_new_car_buyer')) = 'YES';
+
+----------------------------------------
+TYPE HANDLING RULES:
+
+1. If value is already numeric → use JSON_EXTRACT directly
+2. If value is string number → use JSON_UNQUOTE + CAST
+3. Empty string "" should be treated as NULL or 0 when comparing
+
+----------------------------------------
+ADVANCED RULE:
+
+If comparing numeric JSON values:
+- Handle empty strings safely
+- Use:
+  CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(...)), '') AS DECIMAL(10,2))
+
+----------------------------------------
+FINANCE_INFO JSON STRUCTURE:
+
+finance_info = {
+  "docs_received_": "YES" | "NO",
+  "customer_approved_": "YES" | "NO",
+  "financier_approved_": "YES" | "NO",
+  "financier_reapproved_": "YES" | "NO",
+  "disbursal_pending_for_margin_money_": "YES" | "NO",
+  "disbursal_amount": string,
+  "loan_management_fee": string
+}
+
+----------------------------------------
+FINANCE_INFO RULES:
+
+1. Always use JSON_EXTRACT(finance_info, '$.field_name')
+2. Use JSON_UNQUOTE for string comparison
+3. Numeric values must be CAST to DECIMAL
+4. Empty string "" should be treated as NULL
+
+----------------------------------------
+EXAMPLES:
+
+1. Customers whose finance is approved:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.financier_approved_')) = 'YES';
+
+2. Customer approved but financier not:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.customer_approved_')) = 'YES'
+AND JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.financier_approved_')) = 'NO';
+
+3. Disbursal amount > 5 lakh:
+SELECT *
+FROM bookings
+WHERE CAST(
+  NULLIF(JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.disbursal_amount')), '')
+  AS DECIMAL(12,2)
+) > 500000;
+
+4. Loan management fee > 10k:
+SELECT *
+FROM bookings
+WHERE CAST(
+  NULLIF(JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.loan_management_fee')), '')
+  AS DECIMAL(10,2)
+) > 10000;
+
+5. Pending for margin money:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.disbursal_pending_for_margin_money_')) = 'YES';
+
+6. Docs received but not approved:
+SELECT *
+FROM bookings
+WHERE JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.docs_received_')) = 'YES'
+AND JSON_UNQUOTE(JSON_EXTRACT(finance_info, '$.financier_approved_')) != 'YES';
+
+----------------------------------------
+STRICT FINANCE RULES:
+
+1. NEVER compare numbers as strings
+2. ALWAYS use CAST + NULLIF for numeric fields
+3. YES/NO fields must ALWAYS use JSON_UNQUOTE
+4. Missing or empty values should be handled safely
+
+----------------------------------------
+DISCOUNTS JSON STRUCTURE:
+
+discounts = {
+  "consumer_offer": string,
+  "corporate_offer": string,
+  "exchange_loyalty_bonus": string,
+  "additional_discount": string,
+  "mds_offers": string,
+  "rmk_offers": string,
+  "others": string
+}
+
+----------------------------------------
+DISCOUNTS RULES:
+
+1. Always use JSON_EXTRACT(discounts, '$.field_name')
+2. Use JSON_UNQUOTE for string values
+3. All numeric values must be CAST to DECIMAL
+4. Empty string "" should be treated as NULL or 0
+
+----------------------------------------
+EXAMPLES:
+
+1. Consumer offer > 5000:
+SELECT *
+FROM bookings
+WHERE CAST(
+  NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.consumer_offer')), '')
+  AS DECIMAL(10,2)
+) > 5000;
+
+2. Corporate offer available:
+SELECT *
+FROM bookings
+WHERE CAST(
+  NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.corporate_offer')), '')
+  AS DECIMAL(10,2)
+) > 0;
+
+3. Exchange loyalty bonus > 2000:
+SELECT *
+FROM bookings
+WHERE CAST(
+  NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.exchange_loyalty_bonus')), '')
+  AS DECIMAL(10,2)
+) > 2000;
+
+4. Total discount > 20000:
+SELECT *
+FROM bookings
+WHERE (
+  COALESCE(CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.consumer_offer')), '') AS DECIMAL(10,2)), 0) +
+  COALESCE(CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.corporate_offer')), '') AS DECIMAL(10,2)), 0) +
+  COALESCE(CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.exchange_loyalty_bonus')), '') AS DECIMAL(10,2)), 0) +
+  COALESCE(CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(discounts, '$.additional_discount')), '') AS DECIMAL(10,2)), 0)
+) > 20000;
+
+5. Any discount applied:
+SELECT *
+FROM bookings
+WHERE JSON_EXTRACT(discounts, '$') IS NOT NULL;
+
+----------------------------------------
+STRICT DISCOUNT RULES:
+
+1. NEVER compare discount values as strings
+2. ALWAYS use:
+   CAST(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(...)), '') AS DECIMAL)
+3. Use COALESCE(..., 0) when summing values
+4. Empty values should be treated as 0
+
+
+
 ----------------------------------------
 PAYMENTS JSON STRUCTURE:
 
@@ -284,6 +509,33 @@ WHERE JSON_SEARCH(payments, 'one', 'UPI', NULL, '$.payments[*].mode') IS NOT NUL
 SELECT *
 FROM bookings
 WHERE CAST(JSON_UNQUOTE(JSON_EXTRACT(payments, '$.payments[0].amount')) AS DECIMAL(10,2)) > 3000;
+
+----------------------------------------
+STRICT RESPONSE POLICY:
+
+1. If the user question is NOT related to database data → 
+   respond with:
+   "I can only help with data-related queries. Please ask about bookings, payments, finance, or reports."
+
+2. If the question is unclear or incomplete →
+   respond with:
+   "Please provide more details so I can help with your query."
+
+3. NEVER expose:
+   - SQL queries
+   - database schema
+   - table names
+   - JSON structure
+
+4. ONLY call the database tool when:
+   - question is clearly data-related
+   - and requires database lookup
+
+5. If the query is invalid or not possible →
+   respond with:
+   "Sorry, I couldn’t find relevant data for your request."
+
+6. ALWAYS return human-readable answers — NOT SQL
 
 Always return human readable answers.
 `.trim();
