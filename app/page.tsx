@@ -2,30 +2,16 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { SmartMessageRenderer, ToolOutputRenderer } from "./common/MessageRenderer";
 
 export default function Chat() {
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-    }),
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
-
-  function extractRows(data: any) {
-    if (!data) return [];
-
-    // if already array
-    if (Array.isArray(data)) return data;
-
-    // if object with array inside (payments, discounts etc)
-    const key = Object.keys(data).find((k) => Array.isArray(data[k]));
-    if (key) return data[key];
-
-    return [data];
-  }
 
   return (
     <div
@@ -33,207 +19,196 @@ export default function Chat() {
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        maxWidth: "600px",
+        maxWidth: "680px",
         margin: "0 auto",
-        fontFamily: "sans-serif",
+        fontFamily: "'Inter', 'Segoe UI', sans-serif",
         backgroundColor: "#f0f6ff",
       }}
     >
-      {/* Header */}
+      {/* ── Header ── */}
       <div
         style={{
-          padding: "16px 20px",
-          backgroundColor: "#2563eb",
+          padding: "16px 24px",
+          background: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)",
           color: "white",
-          fontSize: "18px",
-          fontWeight: "600",
+          fontSize: "17px",
+          fontWeight: "700",
           letterSpacing: "-0.3px",
-          boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
+          boxShadow: "0 2px 12px rgba(37,99,235,0.35)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
         }}
       >
+        <span
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 16,
+          }}
+        >
+          ✦
+        </span>
         AI Assistant
       </div>
 
-      {/* Messages */}
+      {/* ── Messages ── */}
       <div
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "20px",
+          padding: "24px 20px",
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
+          gap: "16px",
         }}
       >
         {messages.length === 0 && (
-          <p
+          <div
             style={{
               textAlign: "center",
               color: "#94a3b8",
-              marginTop: "40px",
+              marginTop: "60px",
               fontSize: "14px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
             }}
           >
-            Start a conversation...
-          </p>
+            <span style={{ fontSize: 32 }}>💬</span>
+            Start a conversation…
+          </div>
         )}
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            style={{
-              display: "flex",
-              justifyContent:
-                message.role === "user" ? "flex-end" : "flex-start",
-            }}
-          >
+        {messages.map((message) => {
+          const isUser = message.role === "user";
+
+          return (
             <div
+              key={message.id}
               style={{
-                maxWidth: "75%",
-                padding: "10px 14px",
-                borderRadius:
-                  message.role === "user"
-                    ? "18px 18px 4px 18px"
-                    : "18px 18px 18px 4px",
-                backgroundColor: message.role === "user" ? "#2563eb" : "white",
-                color: message.role === "user" ? "white" : "#1e3a5f",
-                fontSize: "14px",
-                lineHeight: "1.6",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                display: "flex",
+                justifyContent: isUser ? "flex-end" : "flex-start",
+                alignItems: "flex-end",
+                gap: 8,
               }}
             >
-              {message.parts.map((part, i) => {
-                if (part.type === "text") {
-                  return <span key={i}>{part.text}</span>;
-                }
+              {/* Avatar (assistant only) */}
+              {!isUser && (
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg,#1e3a5f,#2563eb)",
+                    color: "#fff",
+                    fontSize: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    boxShadow: "0 1px 4px rgba(37,99,235,0.3)",
+                  }}
+                >
+                  ✦
+                </div>
+              )}
 
-                if (
-                  part.type.startsWith("tool-") &&
-                  "output" in part &&
-                  part.state === "output-available"
-                ) {
-                  const rows = (part.output as any).rows;
-
-                  if (!rows || rows.length === 0) {
-                    return <p key={i}>No data found</p>;
+              <div
+                style={{
+                  maxWidth: "78%",
+                  padding: "12px 16px",
+                  borderRadius: isUser
+                    ? "20px 20px 4px 20px"
+                    : "20px 20px 20px 4px",
+                  backgroundColor: isUser ? "#2563eb" : "#ffffff",
+                  color: isUser ? "white" : "#1e3a5f",
+                  fontSize: "14px",
+                  lineHeight: "1.65",
+                  boxShadow: isUser
+                    ? "0 2px 8px rgba(37,99,235,0.3)"
+                    : "0 2px 8px rgba(0,0,0,0.07)",
+                }}
+              >
+                {message.parts.map((part, i) => {
+                  // ── Text part ──
+                  if (part.type === "text") {
+                    if (isUser) {
+                      // User messages: plain, white text
+                      return (
+                        <span key={i} style={{ whiteSpace: "pre-wrap" }}>
+                          {part.text}
+                        </span>
+                      );
+                    }
+                    // Assistant text: smart renderer
+                    return <SmartMessageRenderer key={i} text={part.text} />;
                   }
 
-                  const parsedRows = rows.flatMap((r: any) => {
-                    const newObj: any = {};
+                  // ── Tool output part ──
+                  if (
+                    part.type.startsWith("tool-") &&
+                    "output" in part &&
+                    part.state === "output-available"
+                  ) {
+                    return (
+                      <ToolOutputRenderer key={i} output={(part as any).output} />
+                    );
+                  }
 
-                    Object.keys(r).forEach((key) => {
-                      if (typeof r[key] === "object") {
-                        const extracted = extractRows(r[key]);
-
-                        if (extracted.length > 0) {
-                          extracted.forEach((item: any) => {
-                            Object.assign(newObj, item);
-                          });
-                        }
-                      } else {
-                        newObj[key] = r[key];
-                      }
-                    });
-
-                    return newObj;
-                  });
-
-                  const columns = Object.keys(parsedRows[0]);
-
-                  return (
-                    <table
-                      key={i}
-                      style={{
-                        marginTop: 10,
-                        fontSize: 13,
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        fontFamily: "'IBM Plex Mono', monospace",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                        borderRadius: 6,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <thead>
-                        <tr
+                  // ── Tool loading state ──
+                  if (
+                    part.type.startsWith("tool-") &&
+                    "state" in part &&
+                    (part as any).state !== "output-available"
+                  ) {
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          color: "#64748b",
+                          fontSize: 13,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        <span
                           style={{
-                            backgroundColor: "#1e293b",
-                            color: "#f8fafc",
+                            display: "inline-block",
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: "#2563eb",
+                            animation: "pulse 1s infinite",
                           }}
-                        >
-                          {columns.map((col) => (
-                            <th
-                              key={col}
-                              style={{
-                                padding: "10px 14px",
-                                textAlign: "left",
-                                fontWeight: 600,
-                                letterSpacing: "0.04em",
-                                textTransform: "uppercase",
-                                fontSize: 11,
-                                borderBottom: "2px solid #334155",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {col}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
+                        />
+                        Fetching data…
+                      </div>
+                    );
+                  }
 
-                      <tbody>
-                        {parsedRows.map((row: any, idx: number) => (
-                          <tr
-                            key={idx}
-                            style={{
-                              backgroundColor:
-                                idx % 2 === 0 ? "#ffffff" : "#f8fafc",
-                              transition: "background 0.15s",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#e0f2fe")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                idx % 2 === 0 ? "#ffffff" : "#f8fafc")
-                            }
-                          >
-                            {columns.map((col) => (
-                              <td
-                                key={col}
-                                style={{
-                                  padding: "9px 14px",
-                                  borderBottom: "1px solid #e2e8f0",
-                                  color: "#334155",
-                                  verticalAlign: "middle",
-                                }}
-                              >
-                                {typeof row[col] === "object" &&
-                                row[col] !== null
-                                  ? JSON.stringify(row[col], null, 2)
-                                  : row[col]}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  );
-                }
-
-                return null;
-              })}
+                  return null;
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* ── Input bar ── */}
       <div
         style={{
-          padding: "12px 16px",
+          padding: "14px 18px",
           backgroundColor: "white",
           borderTop: "1px solid #dbeafe",
           display: "flex",
@@ -243,7 +218,7 @@ export default function Chat() {
       >
         <input
           value={input}
-          placeholder="Type a message..."
+          placeholder="Ask anything…"
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && input.trim()) {
@@ -253,14 +228,17 @@ export default function Chat() {
           }}
           style={{
             flex: 1,
-            padding: "10px 14px",
-            borderRadius: "24px",
+            padding: "11px 16px",
+            borderRadius: "28px",
             border: "1.5px solid #bfdbfe",
             outline: "none",
             fontSize: "14px",
             color: "#1e3a5f",
             backgroundColor: "#f0f6ff",
+            transition: "border-color 0.2s",
           }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "#bfdbfe")}
         />
         <button
           onClick={() => {
@@ -269,17 +247,27 @@ export default function Chat() {
             setInput("");
           }}
           style={{
-            padding: "10px 18px",
-            backgroundColor: "#2563eb",
+            padding: "11px 20px",
+            background: "linear-gradient(135deg,#1e40af,#2563eb)",
             color: "white",
             border: "none",
-            borderRadius: "24px",
+            borderRadius: "28px",
             fontSize: "14px",
-            fontWeight: "500",
+            fontWeight: "600",
             cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(37,99,235,0.35)",
+            transition: "transform 0.1s, box-shadow 0.1s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(37,99,235,0.45)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(37,99,235,0.35)";
           }}
         >
-          Send
+          Send ↑
         </button>
       </div>
     </div>
