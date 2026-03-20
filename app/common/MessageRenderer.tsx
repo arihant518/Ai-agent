@@ -14,6 +14,7 @@ function isJSON(str: string): boolean {
   } catch {}
   return false;
 }
+// sample commit
 
 function looksLikeTable(data: any): boolean {
   if (Array.isArray(data) && data.length > 0 && typeof data[0] === "object") return true;
