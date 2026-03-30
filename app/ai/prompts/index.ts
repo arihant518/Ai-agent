@@ -6,6 +6,7 @@ import { DISCOUNT_PROMPT } from "./discountPrompt";
 import { DSE_COMMITMENT_PROMPTS } from "./dseCommitmentPrompt";
 import { EXCHANGE_INFO_PROMPT } from "./exchangeInfo";
 import { FINANCE_PROMPT } from "./financePrompt";
+import { INVOICE_PROMPTS } from "./invoicePrompts";
 import { PAYMENTS_PROMPT } from "./paymentPrompt";
 import { RAW_DATA_PROMPT } from "./rawDataPrompt";
 import { RTO_PROMPTS } from "./rtoPrompt";
@@ -33,6 +34,8 @@ ${DEBITS_PROMPT}
 ${DISCOUNT_PROMPT}
 
 ${RTO_PROMPTS}
+
+${INVOICE_PROMPTS}
 
 ${DSE_COMMITMENT_PROMPTS}
 `.trim();
